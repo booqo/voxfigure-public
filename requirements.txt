@@ -1,0 +1,5 @@
+Flask>=3.0,<4
+Pillow>=10,<13
+numpy>=1.26,<3
+cadquery==2.7.0
+gunicorn>=21,<24; sys_platform != 'win32'

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoxFigure — 可动素体</title>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/site.css"><link rel="stylesheet" href="/static/app.css">
+<script defer src="/static/vendor/three.min.js"></script><script defer src="/static/i18n.js"></script>
+<script defer src="/static/preview-lighting.js"></script><script defer src="/static/viewer.js"></script>
+<script defer src="/static/local-preview.js"></script><script defer src="/static/app.js"></script>
+</head><body><div class="app">
+<nav class="vf-nav" aria-label="VoxFigure">
+  <a class="vf-brand" href="/" aria-label="VoxFigure"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="12,1.5 22,7 12,12.5 2,7" fill="currentColor"/><polygon points="2,7 12,12.5 12,23 2,17.5" fill="currentColor" fill-opacity=".62"/><polygon points="22,7 12,12.5 12,23 22,17.5" fill="currentColor" fill-opacity=".4"/></svg><span><span class="bm-vox">Vox</span><span class="bm-fig">Figure</span></span></a>
+  <a class="vf-link cur" href="/" data-i18n="navHome">工作台</a>
+  <div class="vf-right"><button class="tbtn tbtn-sm" id="vfLangBtn" type="button">EN</button>
+    <button class="tbtn tbtn-sm theme-btn" id="btnTheme" type="button" data-i18n-aria="theme" aria-label="切换深浅色">
+      <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    </button>
+  </div>
+</nav>
+<form class="topbar" id="settings">
+  <div class="tb-group tb-params">
+    <label for="bodyType" data-i18n="bodyType">素体：</label><select id="bodyType" data-i18n-aria="bodyType"><option value="figure" data-i18n="bodyFigure">可动素体</option></select>
+    <label for="modelType" data-i18n="model">模型：</label><select id="modelType" name="model" data-i18n-aria="model"><option value="alex" selected>Alex</option><option value="steve">Steve</option></select>
+    <span class="model-scale-field"><label for="pixelSize" data-i18n="pixel">像素 mm：</label><input type="number" id="pixelSize" name="pixel_size" value="2.5" min="1" max="5" step="any" required data-i18n-aria="pixel"><output id="modelHeight" class="model-height" for="pixelSize modelType" aria-live="polite"></output></span>
+    <label for="maxColors" data-i18n="colors">颜色：</label><input type="number" id="maxColors" name="max_colors" value="8" min="2" max="32" step="1" required data-i18n-aria="colors">
+    <label for="printerTemplate" data-i18n="printer">打印机：</label><select id="printerTemplate" name="printer" disabled data-i18n-aria="printer"><option>…</option></select>
+  </div>
+  <span class="tb-spacer"></span><div class="tb-group tb-actions">
+    <button class="tbtn" id="btnQuick" type="button" disabled data-i18n="quickPreview">快速预览</button>
+    <button class="btn-generate" id="btnGenerate" type="submit" disabled data-i18n="generate3d">生成 3D</button>
+    <div class="export-wrap"><button class="btn-export" id="btnExport" type="button" disabled aria-expanded="false" aria-controls="exportPanel" data-i18n="exportBtn">导出</button>
+      <div id="exportPanel" class="export-panel" hidden><div class="ep-title" data-i18n="exportPanelTitle">下载文件</div><div class="ep-note" data-i18n="exportBaseNote">含颜色和分件的 3MF 打印项目。</div>
+        <div class="ep-row"><label for="exportFormat" data-i18n="exportFormatLbl">文件格式</label><select id="exportFormat"><option>3MF</option></select></div>
+        <button class="btn-export ep-go" id="btnExportGo" type="button" data-i18n="exportBtn">导出</button>
+      </div>
+    </div>
+    <button class="tools-toggle" id="btnTools" type="button" aria-expanded="true" aria-controls="tools" data-i18n="tools">工具面板</button>
+  </div>
+</form>
+<main class="main">
+  <div class="viewport" id="viewport" aria-label="3D">
+    <canvas id="canvas3d"></canvas>
+    <div class="view-bar"><button id="btnReset" type="button" data-i18n="reset">复位</button><button id="btnWire" type="button" aria-pressed="false" data-i18n="wire">线框</button><button id="btnRotate" type="button" aria-pressed="false" data-i18n="rotate">旋转</button><button id="btnAxes" class="on" type="button" aria-pressed="true" data-i18n="axes">坐标轴</button><button id="btnLighting" class="on" data-preview-lighting-toggle type="button" aria-pressed="true">阴影</button></div>
+    <div class="explode-bar" id="explodeBar" hidden><span class="lbl" data-i18n="explode">分解</span><button class="exp-tick" data-explode="0" type="button">0</button><button class="exp-tick" data-explode="25" type="button">25</button><button class="exp-tick" data-explode="50" type="button">50</button><button class="exp-tick" data-explode="75" type="button">75</button><button class="exp-tick" data-explode="100" type="button">100</button><input type="range" id="explodeSlider" min="0" max="100" value="0" step="1" data-i18n-aria="explode"><span class="val" id="explodeVal">0%</span></div>
+    <div class="loading" id="loading"><div class="spinner"></div></div>
+    <div class="status-bar" id="status" role="status" aria-live="polite"></div>
+    <div class="shortcut-bar"><span><kbd>W</kbd> <span data-i18n="wire">线框</span></span><span><kbd>R</kbd> <span data-i18n="rotate">旋转</span></span><span><kbd>A</kbd> <span data-i18n="axes">坐标轴</span></span><span data-i18n="mouseHint">左键旋转 · 右键平移 · 滚轮缩放</span></div>
+  </div>
+  <aside class="tools" id="tools">
+    <div class="section"><h3 data-i18n="skin">皮肤</h3>
+      <div class="upload-area" id="uploadArea" role="button" tabindex="0" data-i18n-aria="clickUpload"><svg class="upload-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div class="upload-hint" data-i18n="clickUpload">点击上传皮肤 PNG</div><div class="upload-name" id="fileLabel"></div></div>
+      <input type="file" id="skinFile" accept="image/png,.png" hidden><div class="skin-preview" id="skinPreview" hidden><img id="skinImg" alt="Skin PNG"></div>
+    </div>
+    <div class="section" id="origPaletteSection" hidden><h3><span data-i18n="origColors">原始颜色</span> <span class="color-count" id="origCount"></span></h3><div class="orig-palette" id="origPalette"></div></div>
+    <div class="section" id="partSection" hidden><h3 data-i18n="parts">部件</h3><div class="part-toggles" id="partToggles"></div></div>
+    <div class="section" id="quantPaletteSection" hidden><h3><span data-i18n="quantized">量化颜色</span> <span class="color-count" id="quantCount"></span></h3><div class="quant-palette" id="quantPalette"></div></div>
+    <div class="section" id="downloadSection" hidden><h3 data-i18n="downloads">下载</h3><ul class="download-list" id="downloadList"></ul></div>
+  </aside>
+</main>
+<footer class="app-foot"><span>Design by 烧红的木炭</span><span class="sep">·</span><a href="https://voxfigure.com" target="_blank" rel="noopener noreferrer">voxfigure.com</a></footer>
+</div></body></html>

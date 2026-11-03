@@ -1,0 +1,10 @@
+services:
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - geometry-cache:/cache
+    restart: unless-stopped
+volumes:
+  geometry-cache:

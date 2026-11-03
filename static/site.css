@@ -1,0 +1,51 @@
+/* VoxFigure shared design tokens + global nav (W5 UI unification).
+   Dark is the default; [data-theme=light] overrides. The token names are the
+   app's (index.html) set; --border/--mute/--gold are aliases the marketing and
+   legal page CSS already uses, so those pages restyle by just loading this
+   file and dropping their own :root line. */
+:root{
+    color-scheme:dark;
+    --bg:#1a1a2e;--surface:#16213e;--surface-alt:#0f3460;--canvas-bg:#1a1a2e;
+    --border-strong:#0f3460;--border-mid:#333;--border-soft:#555;--border-faint:#444;
+    --text:#e0e0e0;--text-mute:#888;--text-dim:#aaa;--text-faint:#555;
+    --accent:#e94560;--accent-hover:#ff6b8a;--success:#4ecca3;--success-hover:#6edcb3;
+    --on-success:#1a1a2e;--pal-hover:#fff;
+    --status-bg:rgba(22,33,62,0.9);--view-bar-bg:rgba(22,33,62,0.85);
+    --shortcut-bg:rgba(22,33,62,0.7);--loading-bg:rgba(26,26,46,0.85);
+    --gold:#f0b54a;
+    --border:var(--border-mid);--mute:var(--text-mute);
+}
+[data-theme="light"]{
+    color-scheme:light;
+    --bg:#f5f5f7;--surface:#ffffff;--surface-alt:#eef0f4;--canvas-bg:#e8ecf2;
+    --border-strong:#d8dde6;--border-mid:#d0d4dc;--border-soft:#99a4b3;--border-faint:#c4c8d0;
+    --text:#1a1a2e;--text-mute:#5a6a7d;--text-dim:#4d5969;--text-faint:#99a4b3;
+    --accent:#d63558;--accent-hover:#e94560;--success:#2ba888;--success-hover:#1f8e72;
+    --on-success:#ffffff;--pal-hover:#1a1a2e;
+    --status-bg:rgba(255,255,255,0.94);--view-bar-bg:rgba(255,255,255,0.9);
+    --shortcut-bg:rgba(255,255,255,0.78);--loading-bg:rgba(245,245,247,0.85);
+    --gold:#b8860b;
+}
+
+/* Native option popups do not consistently inherit a styled select's
+   foreground/background.  Give Chromium/GTK an explicit scheme and fallback
+   colors so dark mode cannot produce pale text on a white dropdown. */
+select option{background:var(--surface-alt);color:var(--text)}
+[data-theme="light"] select option{background:var(--surface);color:var(--text)}
+
+/* ── global nav (templates/_nav.html) ─────────────────────────────────── */
+.vf-nav{display:flex;align-items:center;gap:16px;padding:9px 18px;
+        background:var(--surface);border-bottom:1px solid var(--border-strong);
+        flex-wrap:wrap;flex-shrink:0;font-family:'Segoe UI',system-ui,sans-serif}
+.vf-brand{display:flex;align-items:center;gap:7px;font-size:1.12em;font-weight:800;
+          letter-spacing:.3px;color:var(--text);text-decoration:none;white-space:nowrap;line-height:1}
+.vf-brand svg{width:1.05em;height:1.05em;color:var(--accent);flex-shrink:0}
+.vf-brand .bm-vox{color:var(--accent)}
+.vf-nav a.vf-link{color:var(--text-mute);text-decoration:none;font-size:.92em}
+.vf-nav a.vf-link:hover{color:var(--text)}
+.vf-nav a.vf-link.cur{color:var(--text);font-weight:600}
+.vf-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vf-btn{background:var(--surface-alt);border:1px solid var(--border-mid);color:var(--text);
+        border-radius:6px;padding:5px 10px;font-size:.85em;cursor:pointer}
+.vf-btn:hover{border-color:var(--accent)}
+@media(max-width:700px){.vf-nav{gap:10px;padding:8px 12px}}
