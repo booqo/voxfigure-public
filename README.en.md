@@ -82,7 +82,7 @@ Supported skin sizes are `64×64`, `64×32`, `128×128` and `128×64`, up to 2 M
 
 ![Alex generation result in the workbench](docs/media/workbench-generated.png)
 
-Alex skin mapping and printable-part preview.
+Real printable-part output using Minecraft's default Alex skin, at 2.5 mm per pixel and 16 colours. See also the [Steve example](docs/media/workbench-steve.png). Skin sources and rights are documented in the [media notes](docs/media/README.md).
 
 </details>
 
@@ -124,7 +124,7 @@ Read the [development notes](docs/DEVELOPMENT.md) (Chinese) before making change
 - Standard Steve / Alex models: [CC BY-SA 4.0](LICENSE-MODELS).
 - Third-party files retain their own licenses; see [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
 
-See [LICENSING.md](LICENSING.md) for scope, model attribution and generated-file notes. The model artwork and animation in this README are also licensed under CC BY-SA 4.0; see [media credits](docs/media/README.md).
+See [LICENSING.md](LICENSING.md) for scope, model attribution and generated-file notes. The model line artwork and animation in this README are also licensed under CC BY-SA 4.0. The Minecraft skins shown in workbench screenshots retain their original rights; see [media credits](docs/media/README.md).
 
 Design by 烧红的木炭 · https://voxfigure.com
 

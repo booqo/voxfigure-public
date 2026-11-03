@@ -82,7 +82,7 @@ docker compose down
 
 ![工作台中的 Alex 生成结果](docs/media/workbench-generated.png)
 
-Alex 皮肤映射与打印分件预览。
+使用 Minecraft 默认 Alex 皮肤实际生成的打印分件预览，2.5 mm / 像素、16 色。另见 [Steve 示例](docs/media/workbench-steve.png)。皮肤来源和权利说明见 [媒体说明](docs/media/README.md)。
 
 </details>
 
@@ -124,7 +124,7 @@ macOS / Linux 将解释器路径替换为 `.venv/bin/python`。
 - 普通 Steve / Alex 模型采用 [CC BY-SA 4.0](LICENSE-MODELS)。
 - 第三方文件保留各自许可证，见 [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt)。
 
-适用范围、模型署名示例和导出物说明见 [LICENSING.md](LICENSING.md)。README 中的模型插图与动画同样采用 CC BY-SA 4.0，署名见 [媒体许可](docs/media/README.md)。
+适用范围、模型署名示例和导出物说明见 [LICENSING.md](LICENSING.md)。README 中的模型线稿与动画同样采用 CC BY-SA 4.0；工作台截图中的 Minecraft 皮肤仍由原权利人保留权利，见 [媒体许可](docs/media/README.md)。
 
 Design by 烧红的木炭 · https://voxfigure.com
 
