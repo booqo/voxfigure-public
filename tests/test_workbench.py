@@ -71,6 +71,9 @@ def test_preview_scale_and_download_package(client, model):
     np.testing.assert_allclose(p(two), p(one)*2)
     assert len(one['palette']) <= 8 and one['palette'] == two['palette']
     assert {r['part'] for r in one['parts']} == {'head','body','left_arm','right_arm','left_leg','right_leg'}
+    assert {r['file'].split('/')[0] for r in one['parts']} == {r['part'] for r in one['parts']}
+    np.testing.assert_allclose([r['center'] for r in two['parts']],
+                               np.array([r['center'] for r in one['parts']])*2, atol=.11)
     response = client.post('/api/export', data=form(model=model))
     assert response.status_code == 200
     assert response.mimetype == 'model/3mf'
@@ -126,7 +129,7 @@ def test_release_assets_and_modules_are_allowlisted():
         },
         'templates': {'index.html'},
         'static': {
-            'app.css', 'app.js', 'i18n.js', 'local-preview-worker.js', 'local-preview.js',
+            'app.css', 'app.js', 'explode.js', 'i18n.js', 'local-preview-worker.js', 'local-preview.js',
             'preview-lighting.js', 'preview-palette.js', 'site.css',
             'skin-preview-template.js', 'theme.js', 'vendor/three.min.js', 'viewer.js',
         },
@@ -155,9 +158,29 @@ def test_native_step_to_real_print_project(tmp_path, model):
     mesh = body.generate(path, model, 2.5, 8)
     preview = body.preview(mesh)
     assert preview['triangles'] > 10000
+    assert len({r['file'] for r in preview['parts']}) == 51
+    assert len({r['file'] for r in preview['parts'] if r['part'] == 'head'}) > 1
     assert {s['source_file'].split('/')[0] for s in mesh['solids']} == {'head','body','left_arm','right_arm','left_leg','right_leg'}
     target = tmp_path/'body.3mf'; body.export(mesh,target,'bambu_A1_0.4')
     with zipfile.ZipFile(target) as archive:
         config = archive.read('Metadata/model_settings.config').decode()
         assert 'chest_mutile_color_for_print.stp' in config and 'joint_rods/' in config
         assert len([n for n in archive.namelist() if n.startswith('3D/Objects/')]) > 20
+
+
+def test_preview_preserves_source_parts_and_scaled_entity_centers():
+    solids = []
+    for source, origin in [('head/shell.stp', (0, 0, 0)),
+                           ('head/shell.stp', (0, 0, 2)),
+                           ('head/frame.stp', (6, 0, 0))]:
+        x, y, z = origin
+        solids.append({'positions': [x, y, z, x+3, y, z, x, y+3, z],
+                       'position_scale': 2, 'tri_extruders': [1], 'source_file': source})
+    mesh = {'solids': solids, 'palette': [[255, 255, 255]]}
+    before = json.dumps(mesh)
+    result = body.preview(mesh)
+    assert [r['file'] for r in result['parts']] == ['head/shell.stp', 'head/shell.stp', 'head/frame.stp']
+    assert [r['part'] for r in result['parts']] == ['head'] * 3
+    assert [(r['start'], r['count']) for r in result['parts']] == [(0, 3), (3, 3), (6, 3)]
+    assert [r['center'] for r in result['parts']] == [[2, 2, 0], [2, 2, 4], [14, 2, 0]]
+    assert json.dumps(mesh) == before

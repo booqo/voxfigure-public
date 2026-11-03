@@ -46,7 +46,9 @@ def preview(mesh):
         for extruder in s['tri_extruders']:
             colors.extend([extruder - 1] * 3)
         count = len(s['positions']) // 3
-        parts.append({'start': offset, 'count': count, 'part': s['source_file'].split('/')[0]})
+        center = np.asarray(s['positions'], dtype=float).reshape(-1, 3).mean(axis=0) * s['position_scale']
+        parts.append({'start': offset, 'count': count, 'part': s['source_file'].split('/')[0],
+                      'file': s['source_file'], 'center': [round(float(v), 1) for v in center]})
         offset += count
     pos = np.asarray(positions, dtype='<f4').reshape(-1, 3)
     return {'positions': base64.b64encode(pos.tobytes()).decode(),

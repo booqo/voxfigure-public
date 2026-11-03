@@ -8,6 +8,49 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const url=process.env.VF_URL||'http://127.0.0.1:5000';
  const out=path.resolve('test-results');fs.mkdirSync(out,{recursive:true});
+ const snapshot=()=>page.evaluate(()=>meshGroup.children.map(m=>({file:m.userData.file,part:m.userData.part,offset:m.userData.group.offset,position:m.position.toArray(),visible:m.visible,vertices:m.geometry.attributes.position.count,sample:Array.from(m.geometry.attributes.position.array.slice(0,9))})));
+ const framing=()=>page.evaluate(()=>{
+  // A previous expanded frame can leave a near plane beyond the new bounds.
+  camera.near=camDist;fitCamera(true);
+  meshGroup.updateMatrixWorld(true);camera.updateMatrixWorld(true);
+  const bounds=[Infinity,Infinity,Infinity,-Infinity,-Infinity,-Infinity];
+  for(const mesh of meshGroup.children){
+   if(!mesh.visible)continue;if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
+   const box=mesh.geometry.boundingBox;
+   for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z]){
+    const point=new THREE.Vector3(x,y,z).applyMatrix4(mesh.matrixWorld).project(camera);
+    for(let axis=0;axis<3;axis++){bounds[axis]=Math.min(bounds[axis],point.getComponent(axis));bounds[axis+3]=Math.max(bounds[axis+3],point.getComponent(axis));}
+   }
+  }
+  return {bounds,theta,phi,distance:camDist};
+ });
+ const checkExplode=async native=>{
+  const baseline=await snapshot();assert.equal(new Set(baseline.map(m=>m.file)).size,baseline.length);
+  if(native){
+   assert(baseline.length>6,'Generated geometry must retain source parts');
+   const heads=baseline.filter(m=>m.part==='head');assert(heads.length>1,'Head parts must remain separate');
+   assert(new Set(heads.map(m=>JSON.stringify(m.offset))).size>1,'Head source parts need independent motion');
+  }else assert.equal(baseline.length,6,'Quick preview retains skin-part fallback');
+  const viewport=page.viewportSize(),angle=await page.evaluate(()=>{theta+=.37;phi=Math.min(Math.PI-.1,phi+.2);updateCamera();return {theta,phi};});
+  for(const size of [{width:1440,height:1000},{width:390,height:844}]){
+   await page.setViewportSize(size);await page.evaluate(()=>resize());let assembledDistance=null;
+   for(const value of [0,50,100,50,0]){
+    await page.locator(`[data-explode="${value}"]`).click();const state=await snapshot(),view=await framing();
+    for(let i=0;i<state.length;i++){
+     assert.equal(state[i].file,baseline[i].file);assert.deepEqual(state[i].sample,baseline[i].sample);assert.equal(state[i].vertices,baseline[i].vertices);
+     for(let axis=0;axis<3;axis++)assert(Math.abs(state[i].position[axis]-baseline[i].offset[axis]*value/25)<1e-8,'Absolute source-part translation');
+    }
+    assert.equal(view.theta,angle.theta);assert.equal(view.phi,angle.phi);
+    assert(view.bounds.every(v=>Number.isFinite(v)&&v>=-1-1e-6&&v<=1+1e-6),`Clipped ${value}% view at ${size.width}px: ${view.bounds}`);
+    if(value===0){if(assembledDistance===null)assembledDistance=view.distance;else assert(Math.abs(view.distance-assembledDistance)<1e-8,'Reset camera must not accumulate distance');}
+   }
+  }
+  await page.setViewportSize(viewport);await page.evaluate(()=>{resize();explode(0);});
+  const head=page.locator('.part-toggle[data-i18n="head"]');await head.click();
+  const hidden=await snapshot();assert(hidden.filter(m=>m.part==='head').every(m=>!m.visible));assert(hidden.filter(m=>m.part!=='head').every(m=>m.visible));await head.click();
+  await page.locator('#btnWire').click();assert(await page.evaluate(()=>meshGroup.children.every(m=>m.material.wireframe)));await page.locator('#btnWire').click();
+ };
+
  try{
   await page.goto(url,{waitUntil:'networkidle'});
   await page.waitForFunction(()=>document.getElementById('printerTemplate').disabled===false);
@@ -25,6 +68,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    await page.selectOption('#modelType',model);await page.locator('#btnQuick').click();
    await page.waitForFunction(()=>document.getElementById('partToggles').children.length===6&&!document.getElementById('loading').classList.contains('show'));
    assert.equal(await page.locator('#status').evaluate(el=>el.classList.contains('error')),false);
+   await checkExplode(false);
   }
   assert.equal(await page.locator('.part-toggle').count(),6);
   await page.locator('.part-toggle').first().click();assert.equal(await page.locator('.part-toggle').first().getAttribute('aria-pressed'),'false');await page.locator('.part-toggle').first().click();
@@ -45,6 +89,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   if(!process.env.VF_UI_ONLY){
    await page.locator('#btnGenerate').click();
    await page.waitForFunction(()=>!document.getElementById('loading').classList.contains('show')&&document.getElementById('status').textContent.includes('模型已就绪'),{},{timeout:900000});
+   await checkExplode(true);
    await page.locator('#btnExport').click();
    const download=page.waitForEvent('download',{timeout:900000});await page.locator('#btnExportGo').click();
    await (await download).saveAs(path.join(out,'figure.3mf'));

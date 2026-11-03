@@ -27,10 +27,14 @@ $('btnTheme').addEventListener('click',()=>{
  try{localStorage.setItem('mc_theme',theme);}catch(e){}if(scene)scene.background=new THREE.Color(getCanvasBg());
 });
 $('btnTools').addEventListener('click',()=>{const collapsed=$('tools').classList.toggle('collapsed');$('btnTools').setAttribute('aria-expanded',String(!collapsed));});
-function fitCamera(){
+function fitCamera(keepDirection=false){
  const box=new THREE.Box3().setFromObject(meshGroup);if(box.isEmpty())return;
- box.getCenter(target);const size=box.getSize(new THREE.Vector3());camDist=Math.max(size.z,size.y/camera.aspect)*1.6+size.x;
- theta=Math.PI/4;phi=Math.acos(1/Math.sqrt(3));updateCamera();
+ const sphere=box.getBoundingSphere(new THREE.Sphere());target.copy(sphere.center);
+ const vertical=THREE.MathUtils.degToRad(camera.fov/2),horizontal=Math.atan(Math.tan(vertical)*camera.aspect);
+ camDist=Math.max(1,sphere.radius/Math.sin(Math.min(vertical,horizontal))*1.08);
+ if(!keepDirection){theta=Math.PI/4;phi=Math.acos(1/Math.sqrt(3));}
+ camera.near=Math.max(.01,(camDist-sphere.radius)*.5);camera.far=Math.max(2000,camDist+sphere.radius*2);
+ camera.updateProjectionMatrix();updateCamera();camera.updateMatrixWorld();
 }
 $('btnReset').addEventListener('click',()=>{if(meshGroup.children.length)fitCamera();else{theta=Math.PI/4;phi=Math.acos(1/Math.sqrt(3));camDist=120;target.set(0,0,-20);updateCamera();}});
 function toggle(id,on){$(id).classList.toggle('on',on);$(id).setAttribute('aria-pressed',String(on));}
@@ -43,25 +47,35 @@ function swatches(id,colors){$(id).replaceChildren(...colors.map(c=>{const el=do
 function display(data){
  while(meshGroup.children.length){const m=meshGroup.children[0];meshGroup.remove(m);m.geometry.dispose();m.material.dispose();}
  const pos=data.quick?data.positions:decode(data.positions,Float32Array),indices=data.quick?null:decode(data.colors,Uint8Array),parts=new Map();
- for(const r of data.parts){if(!parts.has(r.part))parts.set(r.part,[]);parts.get(r.part).push(r);}
- $('partToggles').replaceChildren();
- for(const [part,ranges] of parts){
-  const total=ranges.reduce((n,r)=>n+r.count,0),positions=new Float32Array(total*3),colors=new Float32Array(total*3);let offset=0;
-  for(const r of ranges){positions.set(pos.subarray(r.start*3,(r.start+r.count)*3),offset*3);
+ const ranges=data.parts.map(r=>{
+  if(r.center)return r;
+  const center=[0,0,0];for(let i=r.start*3;i<(r.start+r.count)*3;i+=3)for(let a=0;a<3;a++)center[a]+=pos[i+a]/r.count;
+  return {...r,center};
+ });
+ for(const group of VfExplode.plan(ranges).groups){
+  const total=group.ranges.reduce((n,r)=>n+r.count,0),positions=new Float32Array(total*3),colors=new Float32Array(total*3);let offset=0;
+  for(const r of group.ranges){positions.set(pos.subarray(r.start*3,(r.start+r.count)*3),offset*3);
    if(data.quick)colors.set(data.vertexColors.subarray(r.start*3,(r.start+r.count)*3),offset*3);
    else for(let i=0;i<r.count;i++){const c=data.palette[indices[r.start+i]];for(let a=0;a<3;a++)colors[(offset+i)*3+a]=c[a]/255;}
    offset+=r.count;
   }
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));geometry.computeVertexNormals();
-  const mesh=new THREE.Mesh(geometry,VfPreviewLighting.material({vertexColors:true,wireframe:wire,side:data.quick?THREE.DoubleSide:THREE.FrontSide}));mesh.userData.part=part;meshGroup.add(mesh);
+  const mesh=new THREE.Mesh(geometry,VfPreviewLighting.material({vertexColors:true,wireframe:wire,side:data.quick?THREE.DoubleSide:THREE.FrontSide}));
+  mesh.userData={part:group.part,file:group.file,group};meshGroup.add(mesh);
+  if(!parts.has(group.part))parts.set(group.part,[]);parts.get(group.part).push(mesh);
+ }
+ $('partToggles').replaceChildren();
+ for(const [part,meshes] of parts){
   const button=document.createElement('button');button.className='part-toggle';button.dataset.i18n=part;button.textContent=vfI18n.t(part);button.setAttribute('aria-pressed','true');
-  button.addEventListener('click',()=>{mesh.visible=!mesh.visible;button.classList.toggle('off',!mesh.visible);button.setAttribute('aria-pressed',String(mesh.visible));});$('partToggles').append(button);
+  button.addEventListener('click',()=>{const visible=button.getAttribute('aria-pressed')!=='true';for(const mesh of meshes)mesh.visible=visible;button.classList.toggle('off',!visible);button.setAttribute('aria-pressed',String(visible));});$('partToggles').append(button);
  }
  $('partSection').hidden=false;$('quantPaletteSection').hidden=false;$('quantCount').textContent=data.palette.length;swatches('quantPalette',data.palette);
  $('explodeSlider').value=0;$('explodeVal').textContent='0%';$('explodeBar').hidden=false;fitCamera();
 }
-function explode(value){$('explodeSlider').value=value;$('explodeVal').textContent=value+'%';const distance=value/100*Number($('pixelSize').value)*8;
- for(const mesh of meshGroup.children){const p=mesh.userData.part;mesh.position.set(0,p.startsWith('left')?distance:p.startsWith('right')?-distance:0,p==='head'?distance:p.endsWith('leg')?-distance:0);}
+function explode(value){
+ const factor=Math.max(0,Math.min(100,Number(value)||0))/100;$('explodeSlider').value=factor*100;$('explodeVal').textContent=(factor*100)+'%';
+ for(const mesh of meshGroup.children)mesh.position.fromArray(VfExplode.translation(mesh.userData.group,factor));
+ fitCamera(true);
 }
 $('explodeSlider').addEventListener('input',e=>explode(e.target.value));document.querySelectorAll('[data-explode]').forEach(el=>el.addEventListener('click',()=>explode(el.dataset.explode)));
 for(const el of [$('modelType'),$('pixelSize'),$('maxColors'),$('printerTemplate')])el.addEventListener('change',invalidate);
